@@ -317,6 +317,7 @@ math.import({
   AVERAGE: (...xs) => xs.reduce((s, x) => s + x, 0) / xs.length,
   ROUND: (x, n) => math.round(x, n || 0),
   SUM: (...xs) => xs.reduce((s, x) => s + x, 0),
+  LEAGUE_SUM: (stat) => players.reduce((total, p) => total + (Number(p[stat]) || 0) * (Number(p.GP) || 0), 0),
 }, { override: true });
 
 /* ---------- constants ---------- */
