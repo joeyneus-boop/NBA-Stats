@@ -392,7 +392,13 @@ function fmt(key, v) {
 /* ---------- formulas ---------- */
 function varNames() { return [...statCols, ...(infoCols.includes("AGE") ? ["AGE"] : []), ...formulas.map(f => f.name)]; }
 
-function compileFormula(expr) { return math.compile(expr); }
+function compileFormula(expr) {
+  const updated = expr.replace(
+    /LEAGUE_SUM\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/gi,
+    (_, stat) => `LEAGUE_SUM("${stat.toUpperCase()}")`
+  );
+  return math.compile(updated);
+}
 
 function runCompiled(code, row, names) {
   const scope = {};
