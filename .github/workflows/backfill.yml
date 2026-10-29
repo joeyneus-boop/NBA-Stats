@@ -1,0 +1,25 @@
+name: Download past seasons
+
+on:
+  schedule:
+    - cron: "0 10 * * 1"   # every Monday: picks up a newly finished season, otherwise finishes in seconds
+  workflow_dispatch:       # run it by hand with a button (do this once to download all past seasons)
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download past seasons and build career averages
+        run: python backfill.py
