@@ -1,0 +1,1163 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New-Stat – NBA</title>
+<script>
+  // Set the theme before the page paints so there's no flash
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem("theme"); } catch (e) {}
+    if (!t) t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", t);
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e16; --panel: #121927; --panel2: #172033; --line: #223049;
+    --text: #e9eef7; --muted: #8995ad; --accent: #ff7a2f; --accent-ink: #1a0d03;
+    --accent-soft: rgba(255,122,47,.13); --accent-line: rgba(255,122,47,.45);
+    --good: #34d399; --bad: #f87171;
+    --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 8px 30px rgba(0,0,0,.35);
+    --radius: 14px;
+  }
+  [data-theme="light"] {
+    --bg: #f3f5f9; --panel: #ffffff; --panel2: #f6f8fc; --line: #e2e7f0;
+    --text: #111827; --muted: #667085; --accent: #e8590c; --accent-ink: #ffffff;
+    --accent-soft: rgba(232,89,12,.09); --accent-line: rgba(232,89,12,.4);
+    --shadow: 0 1px 2px rgba(16,24,40,.05), 0 8px 24px rgba(16,24,40,.06);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 0 20px; }
+
+  /* ---------- top bar ---------- */
+  .topbar { position: sticky; top: 0; z-index: 30; background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  .topbar .wrap { display: flex; align-items: center; gap: 18px; height: 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -.02em; }
+  .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; color: var(--accent-ink); }
+  .tabs { display: flex; gap: 4px; margin-left: 8px; }
+  .tab { border: 0; background: transparent; color: var(--muted); padding: 8px 14px; border-radius: 9px; font-weight: 600; cursor: pointer; }
+  .tab:hover { color: var(--text); background: var(--panel); }
+  .tab.active { color: var(--text); background: var(--panel); box-shadow: inset 0 -2px 0 var(--accent); }
+  .spacer { flex: 1; }
+  .pill { font-size: 12px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); padding: 5px 11px; border-radius: 99px; white-space: nowrap; }
+  .pill i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--good); margin-right: 7px; }
+  .iconbtn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: grid; place-items: center; }
+  .iconbtn:hover { border-color: var(--accent-line); }
+
+  main { padding: 22px 0 60px; }
+  .view { display: none; }
+  .view.active { display: block; }
+  h1 { font-size: 24px; letter-spacing: -.02em; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 12px; letter-spacing: -.01em; }
+  .lead { color: var(--muted); margin: 0 0 18px; max-width: 70ch; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .pad { padding: 18px; }
+
+  /* ---------- leader cards ---------- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .lcard { padding: 14px 14px 10px; cursor: default; }
+  .lcard.custom { border-color: var(--accent-line); background: linear-gradient(180deg, var(--accent-soft), transparent 60%), var(--panel); }
+  .lhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .lname { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .lcard.custom .lname { color: var(--accent); }
+  .lsort { border: 0; background: none; color: var(--muted); font-size: 11px; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+  .lsort:hover { color: var(--text); background: var(--panel2); }
+  .lrow { display: grid; grid-template-columns: 16px 1fr auto; align-items: baseline; gap: 8px; padding: 5px 0; }
+  .lrow + .lrow { border-top: 1px dashed var(--line); }
+  .lrank { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .lplayer { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lplayer small { color: var(--muted); font-weight: 500; margin-left: 5px; }
+  .lval { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .lhead + .lrow .lval { font-size: 18px; }
+  [hidden] { display: none !important; }
+
+  /* ---------- filters ---------- */
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; padding: 14px; margin-bottom: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .control { height: 38px; padding: 0 11px; border: 1px solid var(--line); background: var(--panel2); border-radius: 10px; min-width: 0; }
+  .control:focus { outline: 2px solid var(--accent-line); outline-offset: 0; border-color: var(--accent); }
+  select.control { padding-right: 28px; }
+  .field.grow { flex: 1 1 220px; }
+  .field.small .control { width: 92px; }
+  .btn { height: 38px; padding: 0 15px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); cursor: pointer; font-weight: 600; white-space: nowrap; }
+  .btn:hover { border-color: var(--accent-line); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.primary:hover { filter: brightness(1.07); }
+  .btn.ghost { background: transparent; }
+  .btn.sm { height: 30px; padding: 0 11px; font-size: 12.5px; border-radius: 8px; }
+
+  /* ---------- table ---------- */
+  .tablebar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .count { color: var(--muted); }
+  .count b { color: var(--text); }
+  .scroller { overflow: auto; max-height: 72vh; border-radius: 0 0 var(--radius) var(--radius); }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: 9px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  th { position: sticky; top: 0; z-index: 3; background: var(--panel2); font-size: 11px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted); cursor: pointer; user-select: none; }
+  th:hover { color: var(--text); }
+  th.left, td.left { text-align: left; }
+  th.sorted { color: var(--text); }
+  th .arrow { display: inline-block; width: 10px; color: var(--accent); }
+  td.sorted { background: color-mix(in srgb, var(--accent) 6%, transparent); font-weight: 600; }
+  th.custom { color: var(--accent); text-transform: none; letter-spacing: 0; font-size: 12px; }
+  td.custom { color: var(--text); }
+  tbody tr:hover td { background: color-mix(in srgb, var(--text) 4%, var(--panel)); }
+  tbody tr:hover td.sorted { background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+  .stick1 { position: sticky; left: 0; z-index: 2; background: var(--panel); }
+  .stick2 { position: sticky; left: 46px; z-index: 2; background: var(--panel); box-shadow: 1px 0 0 var(--line); }
+  th.stick1, th.stick2 { z-index: 4; background: var(--panel2); }
+  tbody tr:hover td.stick1, tbody tr:hover td.stick2 { background: color-mix(in srgb, var(--text) 4%, var(--panel)); }
+  td.rank { color: var(--muted); width: 46px; min-width: 46px; text-align: center; }
+  th.rank { width: 46px; min-width: 46px; text-align: center; cursor: default; }
+  td.pname { font-weight: 600; min-width: 170px; }
+  .team { display: inline-block; min-width: 40px; text-align: center; padding: 2px 7px; border-radius: 6px; background: var(--panel2);
+    border: 1px solid var(--line); font-size: 12px; font-weight: 700; letter-spacing: .02em; }
+  .dim { color: var(--muted); }
+  .empty { padding: 40px 20px; text-align: center; color: var(--muted); }
+
+  /* ---------- column menu ---------- */
+  .menuwrap { position: relative; }
+  .menu { position: absolute; right: 0; top: 44px; width: 280px; max-height: 420px; overflow: auto; z-index: 20; padding: 12px; display: none; }
+  .menu.open { display: block; }
+  .menu h3 { margin: 4px 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin-bottom: 8px; }
+  .checks label { display: flex; align-items: center; gap: 7px; cursor: pointer; padding: 3px 0; }
+  .checks input { accent-color: var(--accent); }
+
+  /* ---------- multi-select dropdowns ---------- */
+  .msel { position: relative; }
+  .mbtn { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 150px; max-width: 230px; cursor: pointer; text-align: left; width: 100%; }
+  .mbtn .mtext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mbtn .caret { color: var(--muted); font-size: 11px; }
+  .msel.open .mbtn { border-color: var(--accent); }
+  .mmenu { left: 0; right: auto; width: 330px; max-width: 86vw; }
+  .msel.open .mmenu { display: block; }
+  .allrow { display: flex; align-items: center; gap: 8px; padding: 2px 0 10px; margin-bottom: 8px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .allrow input, .grouphead input { accent-color: var(--accent); }
+  .grouphead { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+  /* the filter labels are small caps; menu labels should look normal */
+  .field .menu label, .menu label { text-transform: none; letter-spacing: 0; font-size: 13.5px; font-weight: 500; color: var(--text); }
+  .menu h3 label { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; font-weight: 700; color: var(--muted); }
+
+  /* ---------- stat guide ---------- */
+  .lead a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .lead a:hover { text-decoration: underline; }
+  .basics { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .basic { padding: 14px 16px; }
+  .basic b { display: block; margin-bottom: 4px; }
+  .basic span { color: var(--muted); }
+  .gchips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .gchip { border: 1px solid var(--line); background: var(--panel2); border-radius: 99px; padding: 5px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; color: var(--muted); }
+  .gchip:hover { color: var(--text); border-color: var(--accent-line); }
+  .gchip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .gsection { margin: 22px 0 10px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .ggrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .gcard { padding: 16px; display: flex; flex-direction: column; gap: 9px; }
+  .gcard.custom { border-color: var(--accent-line); background: linear-gradient(180deg, var(--accent-soft), transparent 55%), var(--panel); }
+  .gtitle { display: flex; align-items: center; gap: 10px; }
+  .gcode { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); border-radius: 8px; padding: 2px 9px; font-weight: 800; font-size: 13px; white-space: nowrap; }
+  .gname { font-weight: 700; font-size: 15px; }
+  .gcard p { margin: 0; }
+  .gk { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+  .gcalc { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; word-break: break-word; }
+  .gcard .actions { margin-top: auto; padding-top: 4px; }
+  .gvar { color: var(--muted); font-size: 12px; }
+  .gvar code { background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; font-size: 12px; }
+
+  /* ---------- stat creator ---------- */
+  .creator { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .row2 { display: grid; grid-template-columns: 190px 1fr; gap: 10px; margin-bottom: 12px; }
+  .formula-input { width: 100%; height: 42px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .chipbtn { border: 1px solid var(--line); background: var(--panel2); border-radius: 8px; padding: 4px 9px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .chipbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .chipbtn.mine { border-color: var(--accent-line); background: var(--accent-soft); }
+  .sub { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 7px; }
+  .templates { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-bottom: 4px; }
+  .tpl { text-align: left; padding: 10px 11px; border: 1px solid var(--line); background: var(--panel2); border-radius: 10px; cursor: pointer; }
+  .tpl:hover { border-color: var(--accent); }
+  .tpl b { display: block; font-size: 13px; }
+  .tpl span { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-word; }
+  .msg { min-height: 20px; font-size: 13px; margin: 8px 0 0; }
+  .msg.err { color: var(--bad); }
+  .msg.ok { color: var(--good); }
+  .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; padding: 5px 11px; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .seg button.on { background: var(--accent-soft); color: var(--accent); }
+  .preview { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .prow { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; padding: 6px 0; align-items: baseline; }
+  .prow + .prow { border-top: 1px dashed var(--line); }
+  .mystat { padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel2); margin-bottom: 10px; }
+  .mystat b { font-size: 14px; }
+  .mystat code { display: block; margin: 5px 0 9px; font-size: 12.5px; color: var(--muted); word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .mystat .bad { color: var(--bad); font-size: 12px; margin-bottom: 6px; }
+  details { margin-top: 14px; color: var(--muted); }
+  details summary { cursor: pointer; font-weight: 600; color: var(--text); }
+  details ul { margin: 8px 0 0; padding-left: 18px; }
+  details li { margin: 4px 0; }
+  details code, .lead code { background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; font-size: 12px; }
+  footer { margin-top: 28px; color: var(--muted); font-size: 12px; text-align: center; }
+
+  @media (max-width: 900px) {
+    .creator { grid-template-columns: 1fr; }
+    .row2 { grid-template-columns: 1fr; }
+    .topbar .wrap { gap: 10px; }
+    .pill { display: none; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 0 12px; }
+    .brand span.t { display: none; }
+    .cards { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -12px 14px; padding: 0 12px 6px; }
+    .lcard { flex: 0 0 82%; scroll-snap-align: start; }
+    .field.small .control { width: 80px; }
+    .tab { padding: 8px 10px; font-size: 13px; }
+    .tabs { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
+      </div>
+      <span class="t">New-Stat</span>
+    </div>
+    <nav class="tabs" aria-label="Sections">
+      <button class="tab active" data-view="leaders">Leaders</button>
+      <button class="tab" data-view="creator">Stat Creator</button>
+      <button class="tab" data-view="guide">Stat Guide</button>
+    </nav>
+    <div class="spacer"></div>
+    <div class="pill" id="status"><i></i>Loading…</div>
+    <button class="iconbtn" id="themeBtn" title="Switch light / dark" aria-label="Switch light or dark theme">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <!-- ================= LEADERS ================= -->
+  <section class="view active" id="view-leaders">
+    <h1>League leaders</h1>
+    <p class="lead" id="leadersLead">Per-game stats for every player. Click any column to sort. Stats you build in the Stat Creator show up here too, highlighted in orange. New to basketball stats? Open the <a href="#guide">Stat Guide</a>.</p>
+
+    <div class="cards" id="cards"></div>
+
+    <div class="panel filters">
+      <div class="field grow"><label for="fSearch">Search</label><input class="control" id="fSearch" type="search" placeholder="Player name…" autocomplete="off"></div>
+      <div class="field"><label>Team</label><div id="fTeam"></div></div>
+      <div class="field" id="posField" hidden><label>Position</label><div id="fPos"></div></div>
+      <div class="field" id="draftField" hidden><label>Draft class</label><div id="fDraft"></div></div>
+      <div class="field small"><label for="fGP">Min games</label><input class="control" id="fGP" type="number" min="0" value="1"></div>
+      <div class="field small"><label for="fMPG">Min MPG</label><input class="control" id="fMPG" type="number" min="0" value="0"></div>
+      <button class="btn ghost" id="fReset">Reset</button>
+    </div>
+
+    <div class="panel">
+      <div class="tablebar">
+        <div class="count" id="count"></div>
+        <div class="spacer"></div>
+        <div class="menuwrap">
+          <button class="btn sm" id="colsBtn">Columns ▾</button>
+          <div class="menu panel" id="colsMenu"></div>
+        </div>
+        <button class="btn sm" id="csvBtn">Export CSV</button>
+      </div>
+      <div class="scroller"><table id="tbl"></table></div>
+    </div>
+  </section>
+
+  <!-- ================= STAT CREATOR ================= -->
+  <section class="view" id="view-creator">
+    <h1>Stat Creator</h1>
+    <p class="lead">Build your own stat with a formula, the same way you would in Excel. Click stat names to drop them in, or start from an example. Your stat appears as a new column on the Leaders page.</p>
+
+    <div class="creator">
+      <div class="panel pad">
+        <h2 id="builderTitle">New stat</h2>
+        <div class="row2">
+          <div class="field"><label for="cName">Name</label><input class="control" id="cName" placeholder="e.g. Impact" maxlength="24" autocomplete="off"></div>
+          <div class="field"><label for="cExpr">Formula</label><input class="control formula-input" id="cExpr" placeholder="(PTS + REB + AST) / MIN" autocomplete="off" spellcheck="false"></div>
+        </div>
+
+        <div class="sub" style="margin-top:0">Stats (click to insert)</div>
+        <div class="chips" id="statChips"></div>
+
+        <div class="sub">Functions</div>
+        <div class="chips" id="fnChips"></div>
+
+        <div class="msg" id="cMsg"></div>
+        <div class="actions">
+          <button class="btn primary" id="cSave">Save stat</button>
+          <button class="btn ghost" id="cClear">Clear</button>
+        </div>
+
+        <div class="preview">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+            <h2 style="margin:0">Live preview</h2>
+            <div class="seg" id="dirSeg"><button class="on" data-dir="desc">Highest</button><button data-dir="asc">Lowest</button></div>
+            <span class="dim" style="font-size:12px">Top 10 among players averaging 15+ minutes</span>
+          </div>
+          <div id="previewBody" class="dim">Type a formula to see who leads.</div>
+        </div>
+
+        <div class="sub">Examples to start from</div>
+        <div class="templates" id="templates"></div>
+
+        <details>
+          <summary>Formula help</summary>
+          <ul>
+            <li>Use <code>+ − * / ( )</code> like a calculator, e.g. <code>PTS + REB + AST</code></li>
+            <li><code>IF(MIN &gt; 20, PTS / MIN, 0)</code> picks one result or another</li>
+            <li><code>ROUND(x, 2)</code>, <code>AVERAGE(a, b, c)</code>, <code>SUM(a, b)</code>, <code>sqrt(x)</code>, <code>max(a, b)</code>, <code>min(a, b)</code>, <code>abs(x)</code></li>
+            <li>Percentages like <code>FG_PCT</code> are on a 0–100 scale (46.4 means 46.4%)</li>
+            <li>You can use your own saved stats inside new formulas</li>
+            <li>Names can't have spaces. Use letters, numbers and underscores.</li>
+          </ul>
+        </details>
+      </div>
+
+      <div class="panel pad">
+        <h2>My stats</h2>
+        <div id="myStats"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STAT GUIDE ================= -->
+  <section class="view" id="view-guide">
+    <h1>Stat Guide</h1>
+    <p class="lead">Every stat on this site in plain English, with what counts as a good number. Numbers are rough rules of thumb, not strict cutoffs, and early in the season everything swings a lot because players have only played a few games.</p>
+
+    <div class="basics" id="guideBasics"></div>
+
+    <div class="panel filters">
+      <div class="field grow"><label for="gSearch">Look up a stat</label><input class="control" id="gSearch" type="search" placeholder="Try &quot;rebound&quot;, &quot;PER&quot; or &quot;efficiency&quot;…" autocomplete="off"></div>
+      <div class="field"><label>Topic</label><div class="gchips" id="gChips"></div></div>
+    </div>
+
+    <div id="guideBody"></div>
+  </section>
+
+  <footer>Stats from ESPN's public feed, refreshed every night after games. This is an unofficial fan project.</footer>
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mathjs@12.4.2/lib/browser/math.js"></script>
+<script>
+"use strict";
+
+/* ---------- Excel-style helper functions ---------- */
+math.import({
+  IF: (test, a, b) => (test ? a : b),
+  AVERAGE: (...xs) => xs.reduce((s, x) => s + x, 0) / xs.length,
+  ROUND: (x, n) => math.round(x, n || 0),
+  SUM: (...xs) => xs.reduce((s, x) => s + x, 0),
+  
+
+LEAGUE_SUM: Object.assign(
+  (args, math, scope) => {
+    const stat = args[0]?.name;
+    if (!stat) throw new Error("Use a stat name like AST");
+    return players.reduce(
+      (total, p) => total + (Number(p[stat]) || 0) * (Number(p.GP) || 0),
+      0
+    );
+  },
+  { rawArgs: true }
+),
+
+
+}, { override: true });
+
+/* ---------- constants ---------- */
+const TEAM_NAMES = {
+  ATL:"Hawks", BOS:"Celtics", BKN:"Nets", CHA:"Hornets", CHI:"Bulls", CLE:"Cavaliers", DAL:"Mavericks", DEN:"Nuggets",
+  DET:"Pistons", GS:"Warriors", GSW:"Warriors", HOU:"Rockets", IND:"Pacers", LAC:"Clippers", LAL:"Lakers", MEM:"Grizzlies",
+  MIA:"Heat", MIL:"Bucks", MIN:"Timberwolves", NO:"Pelicans", NOP:"Pelicans", NY:"Knicks", NYK:"Knicks", OKC:"Thunder",
+  ORL:"Magic", PHI:"76ers", PHX:"Suns", POR:"Trail Blazers", SA:"Spurs", SAS:"Spurs", SAC:"Kings", TOR:"Raptors",
+  UTAH:"Jazz", UTA:"Jazz", WSH:"Wizards", WAS:"Wizards"
+};
+const LABELS = {
+  GP:["GP","Games played"], MIN:["MIN","Minutes per game"], PTS:["PTS","Points"], REB:["REB","Rebounds"],
+  OREB:["OREB","Offensive rebounds"], DREB:["DREB","Defensive rebounds"], AST:["AST","Assists"], STL:["STL","Steals"],
+  BLK:["BLK","Blocks"], TOV:["TOV","Turnovers"], PF:["PF","Personal fouls"], FGM:["FGM","Field goals made"],
+  FGA:["FGA","Field goals attempted"], FG_PCT:["FG%","Field goal %"], FG3M:["3PM","Three-pointers made"],
+  FG3A:["3PA","Three-pointers attempted"], FG3_PCT:["3P%","Three-point %"], FTM:["FTM","Free throws made"],
+  FTA:["FTA","Free throws attempted"], FT_PCT:["FT%","Free throw %"], AGE:["AGE","Age"],
+  POS:["POS","Position"], DRAFT:["DRAFT","Draft year"],
+  PER:["PER","Player efficiency rating (ESPN)"], USG_PCT:["USG%","Usage rate"], TS_PCT:["TS%","True shooting %"],
+  EFG_PCT:["eFG%","Effective field goal %"], PLUS_MINUS:["+/-","Plus/minus per game"], AST_TO:["AST/TO","Assist-to-turnover ratio"],
+  PTS40:["PTS/40","Points per 40 minutes"], REB40:["REB/40","Rebounds per 40 minutes"], AST40:["AST/40","Assists per 40 minutes"],
+  POSS:["POSS","Estimated possessions per game"], GS:["GS","Games started"], DD2:["DD","Double-doubles"],
+  TD3:["TD","Triple-doubles"], VORP:["VORP","Value over replacement player"]
+};
+const INT_COLS = ["GP","AGE","GS","DD2","TD3"];
+const TWO_DECIMALS = ["AST_TO"];
+const DEFAULT_HIDDEN = ["PF","FGM","FGA","FG3A","FTM","FTA","PTS40","REB40","AST40","GS","TD3"];
+const CARD_STATS = ["PTS","REB","AST","STL","BLK"];
+const FUNCTIONS = [
+  ["IF","IF(test, a, b)"], ["ROUND","ROUND(x, 2)"], ["AVERAGE","AVERAGE(a, b)"], ["SUM","SUM(a, b)"],
+  ["sqrt","sqrt(x)"], ["max","max(a, b)"], ["min","min(a, b)"], ["abs","abs(x)"]
+];
+const TEMPLATES = [
+  { name:"PRA", expr:"PTS + REB + AST", note:"Points + rebounds + assists" },
+  { name:"Stocks", expr:"STL + BLK", note:"Steals + blocks" },
+  { name:"Fantasy", expr:"PTS + 1.2 * REB + 1.5 * AST + 3 * STL + 3 * BLK - TOV", note:"A simple fantasy-style score" },
+  { name:"AST_TO", expr:"AST / TOV", note:"Assist-to-turnover ratio" },
+  { name:"PTS36", expr:"PTS / MIN * 36", note:"Points per 36 minutes" },
+  { name:"PPS", expr:"PTS / FGA", note:"Points per shot attempt" },
+  { name:"Impact", expr:"(PTS + REB + AST + STL + BLK - TOV) / MIN", note:"Production per minute" },
+  { name:"Usage_ish", expr:"FGA + 0.44 * FTA + TOV", note:"Possessions used per game" },
+];
+
+/* ---------- stat guide content ---------- */
+const GUIDE_BASICS = [
+  ["Everything is per game", "Unless a stat says otherwise, a number is the player's average per game this season. The exceptions are games started (GS) and double-doubles (DD) and triple-doubles (TD), which are season totals."],
+  ["Percentages run 0 to 100", "A shooting percentage of 46.4 means 46.4%. Keep that in mind when you build formulas in the Stat Creator."],
+  ["Small samples fool you", "After just 3 or 4 games, one hot night can make a bench player look like an MVP. Use the Min games and Min MPG filters to leave out players who barely play."],
+  ["How to read the # column", "It's a player's rank in whatever stat the table is sorted by. Searching for a name doesn't change ranks, but filters (team, minutes, and so on) do. Ties share a rank."],
+  ["Counting stats vs efficiency", "Counting stats (points, rebounds, assists) show how much a player does. Efficiency stats (TS%, PER, AST/TO) show how well they do it. You usually want both."],
+  ["Your own stats", "Stats marked with a star (★) are ones you built in the Stat Creator. They appear in the table like any other column."],
+];
+
+const GUIDE_GROUPS = ["The basics", "Scoring", "Shooting", "Rebounding", "Playmaking", "Defense", "Advanced", "Milestones", "Player info", "My stats"];
+const GUIDE = [
+  { key:"GP", group:"The basics", name:"Games played", what:"How many games the player has appeared in this season.", good:"Compare it to how many games his team has played. If it's much lower, he's been hurt or sat out." },
+  { key:"MIN", group:"The basics", name:"Minutes per game", what:"How long the player is on the court each game. A game is 48 minutes, and each team has five players on the court at a time, so a team has 240 player-minutes to hand out.", good:"Starters play about 28 to 36. Rotation players play 15 to 28. Under 10 usually means a deep-bench player." },
+  { key:"GS", group:"The basics", name:"Games started", what:"How many games the player was in the starting lineup. A season total, not an average.", good:"If GS equals GP, he starts every game he plays." },
+
+  { key:"PTS", group:"Scoring", name:"Points per game", what:"Average points scored per game.", good:"10+ is a solid starter, 20+ is a top scorer, 25+ is a star, and 30+ is elite and rare." },
+  { key:"PTS40", group:"Scoring", name:"Points per 40 minutes", what:"The points a player would score if he played 40 minutes at his current pace. It lets you compare starters and bench players fairly.", calc:"PTS ÷ MIN × 40", good:"Treat it with caution for players with very few minutes, since a tiny sample can inflate it." },
+
+  { key:"FGM", group:"Shooting", name:"Field goals made", what:"Shots from the floor that went in per game. This includes 2-pointers and 3-pointers but not free throws." },
+  { key:"FGA", group:"Shooting", name:"Field goals attempted", what:"Shots from the floor taken per game, whether they went in or not.", good:"High attempts with a decent percentage means a team leans on him to score." },
+  { key:"FG_PCT", group:"Shooting", name:"Field goal percentage", what:"The share of his shots from the floor that go in.", calc:"FGM ÷ FGA × 100", good:"The league average is about 46 to 47%. 50%+ is good for a guard, and big men often shoot 55 to 65% because they shoot close to the basket." },
+  { key:"FG3M", group:"Shooting", name:"3-pointers made", what:"Shots from behind the 3-point line that went in per game. Each is worth 3 points." },
+  { key:"FG3A", group:"Shooting", name:"3-pointers attempted", what:"3-point shots taken per game.", good:"7+ a game means a player is a major 3-point shooter." },
+  { key:"FG3_PCT", group:"Shooting", name:"3-point percentage", what:"The share of 3-point shots that go in.", calc:"3PM ÷ 3PA × 100", good:"The league average is about 35 to 36%. 40%+ is excellent, but only if he takes a decent number of them." },
+  { key:"FTM", group:"Shooting", name:"Free throws made", what:"Free throws are uncontested shots after a foul, worth 1 point each. This is how many go in per game." },
+  { key:"FTA", group:"Shooting", name:"Free throws attempted", what:"Free throws taken per game. Players who attack the basket get fouled more and shoot more of them." },
+  { key:"FT_PCT", group:"Shooting", name:"Free throw percentage", what:"The share of free throws that go in.", calc:"FTM ÷ FTA × 100", good:"The league average is about 77 to 78%. 85%+ is great and 90%+ is elite." },
+  { key:"TS_PCT", group:"Shooting", name:"True shooting percentage", what:"The best simple measure of scoring efficiency. It counts 2-pointers, 3-pointers and free throws together, so it's fairer than FG% for comparing scorers.", calc:"PTS ÷ (2 × (FGA + 0.44 × FTA)) × 100", good:"The league average is about 57%. 60%+ is very efficient, and 65%+ is superstar-level efficiency." },
+  { key:"EFG_PCT", group:"Shooting", name:"Effective field goal percentage", what:"Like FG%, but it gives extra credit for 3-pointers because they're worth more than 2-pointers.", calc:"(FGM + 0.5 × 3PM) ÷ FGA × 100", good:"The league average is about 53 to 54%. 55%+ is good." },
+
+  { key:"REB", group:"Rebounding", name:"Rebounds per game", what:"Grabbing the ball after a missed shot. It's the total of offensive and defensive rebounds.", good:"Big men typically get 8 to 13. Guards get 3 to 6. 10+ a game is excellent." },
+  { key:"OREB", group:"Rebounding", name:"Offensive rebounds", what:"Grabbing a miss by your own team. It gives your team another chance to score.", good:"Strong rebounding big men get 3+ a game." },
+  { key:"DREB", group:"Rebounding", name:"Defensive rebounds", what:"Grabbing the other team's miss, which ends their possession.", good:"8+ a game is elite." },
+
+  { key:"AST", group:"Playmaking", name:"Assists per game", what:"A pass that leads directly to a made basket.", good:"Guards usually get 4 to 8. 8+ is elite playmaking, and 10+ is historic." },
+  { key:"TOV", group:"Playmaking", name:"Turnovers per game", what:"Losing the ball to the other team before getting a shot, through a bad pass, a dropped ball, and so on.", good:"Lower is better. Star ball handlers still often have 3 to 4 because they handle the ball so much." },
+  { key:"AST_TO", group:"Playmaking", name:"Assist-to-turnover ratio", what:"How many assists a player makes for every turnover. It shows how safely he creates for others.", calc:"AST ÷ TOV", good:"2.0+ is good and 3.0+ is great. Be careful with players who barely handle the ball, since their ratio can look better than it is." },
+
+  { key:"STL", group:"Defense", name:"Steals per game", what:"Taking the ball away from the other team.", good:"1.5+ is very good. 2+ is elite." },
+  { key:"BLK", group:"Defense", name:"Blocks per game", what:"Swatting away an opponent's shot.", good:"1+ is good for a big man. 2+ is elite." },
+  { key:"PF", group:"Defense", name:"Personal fouls per game", what:"Fouls a player commits. At 6 fouls he's out of the game.", good:"2 to 3 is normal. 4+ a game means foul trouble is limiting his minutes." },
+
+  { key:"PER", group:"Advanced", name:"Player Efficiency Rating", what:"One number that adds up everything a player does (points, rebounds, assists, steals, blocks) and subtracts the bad stuff (misses, turnovers, fouls), per minute. It's then adjusted for how fast the game is played.", calc:"Calculated by ESPN", good:"15 is the league average by design. 20+ is all-star level, 25+ is MVP level, and 30+ is historic. It's unreliable with few games or minutes, so filter for 15+ MPG." },
+  { key:"USG_PCT", group:"Advanced", name:"Usage rate", what:"The share of his team's plays that a player ends (with a shot, free throws or a turnover) while he's on the court.", calc:"His shots, free throws and turnovers, compared with the whole team's, adjusted for his minutes. This site calculates it from every player's totals.", good:"The average is about 20%, since five players share the ball. 25%+ means a main option. 30%+ is a superstar-sized load." },
+  { key:"PLUS_MINUS", group:"Advanced", name:"Plus/minus per game", what:"How much his team outscored the other team, on average, while he was on the court.", good:"Positive is good, and +5 or better is strong. It's noisy, especially early on, because it depends on teammates and opponents." },
+  { key:"REB40", group:"Advanced", name:"Rebounds per 40 minutes", what:"The rebounds a player would get over 40 minutes at his current pace. It's useful for comparing starters and bench players.", calc:"REB ÷ MIN × 40", good:"Treat it with caution for players with very few minutes." },
+  { key:"AST40", group:"Advanced", name:"Assists per 40 minutes", what:"The assists a player would get over 40 minutes at his current pace.", calc:"AST ÷ MIN × 40", good:"Treat it with caution for players with very few minutes." },
+
+  { key:"DD2", group:"Milestones", name:"Double-doubles", what:"Games where a player reaches 10 or more in two categories, usually points and rebounds, or points and assists. A season total.", good:"A big man averaging 20 points and 10 rebounds is on pace for a double-double almost every night." },
+  { key:"TD3", group:"Milestones", name:"Triple-doubles", what:"Games with 10 or more in three categories (like points, rebounds and assists). A season total.", good:"Very rare. Even the best all-around players only do it a handful of times a season." },
+
+  { key:"POS", group:"Player info", name:"Position", what:"The role a player plays: point guard (PG), shooting guard (SG), small forward (SF), power forward (PF) or center (C). G means guard and F means forward, and combinations like G-F mean he can play both." },
+  { key:"AGE", group:"Player info", name:"Age", what:"The player's age.", good:"Players usually peak around 25 to 29." },
+  { key:"DRAFT", group:"Player info", name:"Draft year", what:"The year a player was picked in the NBA Draft. UDFA means undrafted free agent, a player nobody picked. Players from the latest draft class are rookies." },
+];
+let guideGroup = "All";
+
+/* ---------- state ---------- */
+let data = null;
+let players = [];
+let statCols = [];      // numeric stat columns present in the data
+let infoCols = [];      // POS / AGE / DRAFT when present
+let formulas = [];      // [{name, expr}]
+let compiled = {};      // name -> compiled expression
+let hidden = new Set(DEFAULT_HIDDEN);
+let sortKey = "PTS", sortDir = "desc";
+let previewDir = "desc";
+let editingName = null;
+let draftSeasonYear = null;
+let view = "leaders";
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const label = k => (LABELS[k] ? LABELS[k][0] : k);
+const longLabel = k => (LABELS[k] ? LABELS[k][1] : "Your custom stat");
+const isCustom = k => formulas.some(f => f.name === k);
+const isPct = k => /_PCT$/.test(k);
+
+function store(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+function load(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
+
+function fmt(key, v) {
+  if (v === null || v === undefined || (typeof v === "number" && !isFinite(v))) return "–";
+  if (INT_COLS.includes(key)) return String(Math.round(v));
+  if (key === "DRAFT") return v === 0 ? "UDFA" : String(v);
+  if (isCustom(key)) {
+    const a = Math.abs(v);
+    return (Math.round(v * 100) / 100).toLocaleString(undefined, { maximumFractionDigits: a >= 100 ? 1 : 2 });
+  }
+  if (TWO_DECIMALS.includes(key)) return (Math.round(v * 100) / 100).toFixed(2);
+  return (Math.round(v * 10) / 10).toFixed(1);
+}
+
+/* ---------- formulas ---------- */
+function varNames() { return [...statCols, ...(infoCols.includes("AGE") ? ["AGE"] : []), ...formulas.map(f => f.name)]; }
+
+function compileFormula(expr) { return math.compile(expr); }
+
+function runCompiled(code, row, names) {
+  const scope = {};
+  for (const n of names) { const v = row[n]; if (typeof v === "number") scope[n] = v; }
+  let v;
+  try { v = code.evaluate(scope); } catch (e) { return null; }
+  if (typeof v === "boolean") v = v ? 1 : 0;
+  return (typeof v === "number" && isFinite(v)) ? v : null;
+}
+
+function recompute() {
+  compiled = {};
+  const names = [...statCols, ...(infoCols.includes("AGE") ? ["AGE"] : [])];
+  for (const f of formulas) {
+    f.error = null;
+    try { compiled[f.name] = compileFormula(f.expr); } catch (e) { f.error = e.message; compiled[f.name] = null; }
+    for (const p of players) p[f.name] = compiled[f.name] ? runCompiled(compiled[f.name], p, names) : null;
+    names.push(f.name);
+  }
+}
+
+// Names a formula may use: the base stats plus your own stats that come BEFORE it
+function namesFor(editing) {
+  const base = [...statCols, ...(infoCols.includes("AGE") ? ["AGE"] : [])];
+  const idx = editing ? formulas.findIndex(f => f.name === editing) : -1;
+  const earlier = (idx < 0 ? formulas : formulas.slice(0, idx)).filter(f => !f.error).map(f => f.name);
+  return [...base, ...earlier];
+}
+
+function validateName(name, ignore) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) return "Give it a one-word name: letters, numbers or underscores, not starting with a number.";
+  if (varNames().includes(name) && name !== ignore) return `"${name}" is already a stat. Pick another name.`;
+  if (typeof math[name] !== "undefined" || ["e","i","pi","PI","E","Infinity","NaN","true","false","null"].includes(name)) return `"${name}" is a reserved math word. Pick another name.`;
+  return null;
+}
+
+/* ---------- filters ---------- */
+/* multi-select dropdowns (Team / Position / Draft class), each with a "Select all" toggle */
+const multi = {};
+
+function initMulti(id, options, noun, allLabel) {
+  const root = $(id);
+  multi[id] = { options, selected: new Set(options.map(o => o.value)), noun, allLabel };
+  root.classList.add("msel");
+  root.innerHTML =
+    `<button type="button" class="control mbtn" aria-haspopup="true"><span class="mtext"></span><span class="caret">▾</span></button>` +
+    `<div class="menu panel mmenu"><label class="allrow"><input type="checkbox" class="mall"><b>Select all</b></label>` +
+    `<div class="checks">${options.map(o => `<label><input type="checkbox" data-v="${esc(o.value)}" checked>${esc(o.label)}</label>`).join("")}</div></div>`;
+  syncMulti(id);
+}
+
+function isAll(id) { const m = multi[id]; return !m || m.selected.size === m.options.length; }
+
+function syncMulti(id) {
+  const m = multi[id], root = $(id);
+  root.querySelectorAll("input[data-v]").forEach(cb => { cb.checked = m.selected.has(cb.dataset.v); });
+  const all = root.querySelector(".mall");
+  all.checked = m.selected.size === m.options.length;
+  all.indeterminate = m.selected.size > 0 && m.selected.size < m.options.length;
+  let text;
+  if (m.selected.size === m.options.length) text = m.allLabel;
+  else if (m.selected.size === 0) text = "None selected";
+  else if (m.selected.size <= 3) text = m.options.filter(o => m.selected.has(o.value)).map(o => o.short || o.label).join(", ");
+  else text = `${m.selected.size} ${m.noun}`;
+  root.querySelector(".mtext").textContent = text;
+}
+
+function wireMulti(id) {
+  const root = $(id);
+  root.addEventListener("click", e => {
+    if (e.target.closest(".mbtn")) {
+      e.stopPropagation();
+      const wasOpen = root.classList.contains("open");
+      document.querySelectorAll(".msel.open").forEach(x => x.classList.remove("open"));
+      $("colsMenu").classList.remove("open");
+      if (!wasOpen) root.classList.add("open");
+    }
+  });
+  root.addEventListener("change", e => {
+    const m = multi[id], t = e.target;
+    if (t.classList.contains("mall")) {
+      if (m.selected.size === m.options.length) m.selected.clear();
+      else m.options.forEach(o => m.selected.add(o.value));
+    } else if (t.dataset.v !== undefined) {
+      if (t.checked) m.selected.add(t.dataset.v); else m.selected.delete(t.dataset.v);
+    }
+    syncMulti(id);
+    renderTable();
+  });
+}
+
+/* everyone who matches the filters EXCEPT the name search (ranks are worked out on this group) */
+function baseRows() {
+  const gp = Number($("fGP").value) || 0, mpg = Number($("fMPG").value) || 0;
+  const teamAll = isAll("fTeam"), posAll = isAll("fPos"), draftAll = isAll("fDraft");
+  return players.filter(p => {
+    if (!teamAll && !multi.fTeam.selected.has(p.TEAM)) return false;
+    if (!posAll) {
+      const ps = (p.POS || "").split(/[-/ ]/).filter(Boolean);
+      if (!ps.some(x => multi.fPos.selected.has(x))) return false;
+    }
+    if (!draftAll) {
+      const key = p.DRAFT === 0 ? "UDFA" : (p.DRAFT === null || p.DRAFT === undefined ? null : String(p.DRAFT));
+      if (key === null || !multi.fDraft.selected.has(key)) return false;
+    }
+    if ((p.GP || 0) < gp) return false;
+    if ((p.MIN || 0) < mpg) return false;
+    return true;
+  });
+}
+
+/* rank = position in the sorted group; players with the same value share a rank */
+function rankEntries(sorted, key) {
+  const textKey = ["PLAYER", "TEAM", "POS"].includes(key);
+  const out = [];
+  let prev, prevRank = 0;
+  sorted.forEach((p, i) => {
+    const v = p[key];
+    const none = v === null || v === undefined || (typeof v === "number" && !isFinite(v));
+    let rank = null;
+    if (!none) rank = (!textKey && i > 0 && v === prev) ? prevRank : i + 1;
+    if (!none) { prev = v; prevRank = rank; }
+    out.push({ p, rank });
+  });
+  return out;
+}
+
+function getEntries() {
+  const pool = sortRows(baseRows(), sortKey, sortDir);
+  const ranked = rankEntries(pool, sortKey);
+  const q = $("fSearch").value.trim().toLowerCase();
+  const shown = q ? ranked.filter(e => e.p.PLAYER.toLowerCase().includes(q)) : ranked;
+  return { pool, ranked, shown, q };
+}
+
+function sortRows(rows, key, dir) {
+  const textKey = ["PLAYER","TEAM","POS"].includes(key);
+  const m = dir === "asc" ? 1 : -1;
+  return rows.slice().sort((a, b) => {
+    const x = a[key], y = b[key];
+    const xn = x === null || x === undefined || (typeof x === "number" && !isFinite(x));
+    const yn = y === null || y === undefined || (typeof y === "number" && !isFinite(y));
+    if (xn && yn) return 0;
+    if (xn) return 1;
+    if (yn) return -1;
+    if (textKey) return String(x).localeCompare(String(y)) * m;
+    return (x - y) * m;
+  });
+}
+
+/* ---------- columns ---------- */
+function visibleStatCols() { return [...infoCols, ...statCols, ...formulas.map(f => f.name)].filter(c => !hidden.has(c)); }
+
+/* ---------- Leaders view ---------- */
+function renderCards(rows) {
+  const keys = CARD_STATS.filter(k => statCols.includes(k));
+  const last = formulas.length ? formulas[formulas.length - 1].name : null;
+  if (last) keys.push(last);
+  $("cards").innerHTML = keys.map(k => {
+    const top = sortRows(rows.filter(r => r[k] !== null && r[k] !== undefined), k, "desc").slice(0, 3);
+    const rowsHtml = top.length ? top.map((p, i) => `
+      <div class="lrow"><span class="lrank">${i + 1}</span>
+        <span class="lplayer">${esc(p.PLAYER)}<small>${esc(p.TEAM)}</small></span>
+        <span class="lval">${fmt(k, p[k])}</span></div>`).join("") : `<div class="dim" style="padding:8px 0">${isCustom(k) ? "No data. Check this stat's formula." : "No players match"}</div>`;
+    return `<div class="panel lcard ${isCustom(k) ? "custom" : ""}">
+      <div class="lhead"><span class="lname">${esc(label(k))}${isCustom(k) ? " ★" : ""}</span>
+      <button class="lsort" data-sort="${esc(k)}" title="Sort the table by this stat">Sort table</button></div>${rowsHtml}</div>`;
+  }).join("");
+}
+
+function renderTable() {
+  const { pool, shown, q } = getEntries();
+  renderCards(pool);
+  const cols = visibleStatCols();
+  const thCell = (key, cls, text, title) =>
+    `<th class="${cls}${sortKey === key ? " sorted" : ""}${isCustom(key) ? " custom" : ""}" data-key="${esc(key)}" title="${esc(title || "")}">${esc(text)}<span class="arrow">${sortKey === key ? (sortDir === "asc" ? "▲" : "▼") : ""}</span></th>`;
+  let html = "<thead><tr>";
+  html += `<th class="rank stick1">#</th>`;
+  html += thCell("PLAYER", "left stick2", "Player", "Sort by name");
+  html += thCell("TEAM", "left", "Team", "Team");
+  for (const c of cols) {
+    html += thCell(c, ["POS"].includes(c) ? "left" : "", isCustom(c) ? "★ " + c : label(c), longLabel(c));
+  }
+  html += "</tr></thead><tbody>";
+  if (!shown.length) {
+    html += `<tr><td colspan="${cols.length + 3}" class="empty">${q ? "No player matches that search." : "No players match those filters."}</td></tr>`;
+  }
+  const out = [];
+  shown.forEach(({ p, rank }) => {
+    let r = `<tr><td class="rank stick1">${rank === null ? "–" : rank}</td><td class="left pname stick2">${esc(p.PLAYER)}</td>`;
+    r += `<td class="left"><span class="team" title="${esc(TEAM_NAMES[p.TEAM] || "")}">${esc(p.TEAM)}</span></td>`;
+    for (const c of cols) {
+      const cls = [c === sortKey ? "sorted" : "", isCustom(c) ? "custom" : "", c === "POS" ? "left" : ""].join(" ");
+      const v = p[c];
+      r += `<td class="${cls}">${c === "POS" ? esc(v || "–") : fmt(c, v)}</td>`;
+    }
+    out.push(r + "</tr>");
+  });
+  $("tbl").innerHTML = html + out.join("") + "</tbody>";
+  $("count").innerHTML = q
+    ? `<b>${shown.length}</b> found · ranked among the ${pool.length} players in your filters`
+    : `<b>${pool.length}</b> of ${players.length} players`;
+}
+
+function buildFilters() {
+  const teams = [...new Set(players.map(p => p.TEAM).filter(Boolean))].sort();
+  initMulti("fTeam", teams.map(t => ({ value: t, short: t, label: t + (TEAM_NAMES[t] ? " · " + TEAM_NAMES[t] : "") })), "teams", "All teams");
+  wireMulti("fTeam");
+
+  const poss = new Set();
+  players.forEach(p => (p.POS || "").split(/[-/ ]/).filter(Boolean).forEach(x => poss.add(x)));
+  if (poss.size) {
+    const order = ["PG","SG","G","SF","PF","F","C"];
+    const list = [...poss].sort((a, b) => (order.indexOf(a) < 0 ? 99 : order.indexOf(a)) - (order.indexOf(b) < 0 ? 99 : order.indexOf(b)));
+    initMulti("fPos", list.map(x => ({ value: x, label: x })), "positions", "All positions");
+    wireMulti("fPos");
+    $("posField").hidden = false;
+  }
+
+  const years = [...new Set(players.map(p => p.DRAFT).filter(y => y && y > 0))].sort((a, b) => b - a);
+  if (years.length) {
+    const opts = years.map(y => ({ value: String(y), short: String(y), label: y + (y === draftSeasonYear ? " · rookies" : "") }));
+    if (players.some(p => p.DRAFT === 0)) opts.push({ value: "UDFA", short: "Undrafted", label: "Undrafted" });
+    initMulti("fDraft", opts, "classes", "All classes");
+    wireMulti("fDraft");
+    $("draftField").hidden = false;
+  }
+}
+
+let menuGroups = [];
+
+function buildColumnsMenu() {
+  const groups = [
+    ["Player info", infoCols],
+    ["Stats", statCols],
+    ["My stats", formulas.map(f => f.name)],
+  ].filter(g => g[1].length);
+  menuGroups = groups.map(g => g[1]);
+  $("colsMenu").innerHTML =
+    `<label class="allrow"><input type="checkbox" id="colsAll"><b>Select all columns</b></label>` +
+    groups.map(([title, cols], gi) =>
+      `<h3><label class="grouphead"><input type="checkbox" data-group="${gi}">${title}</label></h3><div class="checks">${cols.map(c =>
+        `<label><input type="checkbox" data-col="${esc(c)}">${esc(isCustom(c) ? c : label(c))}</label>`).join("")}</div>`
+    ).join("") + `<button class="btn sm ghost" id="colsReset">Reset to default</button>`;
+  syncColsMenu();
+}
+
+function syncColsMenu() {
+  const menu = $("colsMenu");
+  menu.querySelectorAll("input[data-col]").forEach(cb => { cb.checked = !hidden.has(cb.dataset.col); });
+  menu.querySelectorAll("input[data-group]").forEach(cb => {
+    const cols = menuGroups[Number(cb.dataset.group)] || [];
+    const n = cols.filter(c => !hidden.has(c)).length;
+    cb.checked = cols.length > 0 && n === cols.length;
+    cb.indeterminate = n > 0 && n < cols.length;
+  });
+  const all = menuGroups.flat(), n = all.filter(c => !hidden.has(c)).length, m = $("colsAll");
+  if (m) { m.checked = all.length > 0 && n === all.length; m.indeterminate = n > 0 && n < all.length; }
+}
+
+function csvExport() {
+  const rows = getEntries().shown;
+  const cols = visibleStatCols();
+  const head = ["Rank", "Player", "Team", ...cols.map(c => isCustom(c) ? c : label(c))];
+  const q = v => { const s = String(v == null ? "" : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const lines = [head.map(q).join(",")];
+  rows.forEach(({ p, rank }) => {
+    lines.push([rank === null ? "" : rank, p.PLAYER, p.TEAM, ...cols.map(c => {
+      const v = p[c];
+      if (c === "POS") return v || "";
+      if (v === null || v === undefined) return "";
+      return typeof v === "number" ? Math.round(v * 1000) / 1000 : v;
+    })].map(q).join(","));
+  });
+  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "nba_stats.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- Stat Guide view ---------- */
+function renderGuide() {
+  $("guideBasics").innerHTML = GUIDE_BASICS.map(([t, d]) => `<div class="panel basic"><b>${esc(t)}</b><span>${esc(d)}</span></div>`).join("");
+
+  const avail = new Set([...statCols, ...infoCols]);
+  let items = GUIDE.filter(g => avail.has(g.key));
+  items = items.concat(formulas.map(f => ({ key: f.name, group: "My stats", name: f.name, custom: true,
+    what: "A stat you built yourself in the Stat Creator.", calc: f.expr })));
+
+  const groups = GUIDE_GROUPS.filter(g => items.some(i => i.group === g));
+  if (guideGroup !== "All" && !groups.includes(guideGroup)) guideGroup = "All";
+  $("gChips").innerHTML = ["All", ...groups].map(g => `<button class="gchip${g === guideGroup ? " on" : ""}" data-g="${esc(g)}">${esc(g)}</button>`).join("");
+
+  const q = $("gSearch").value.trim().toLowerCase();
+  const match = i => !q || [i.key, label(i.key), i.name, i.what, i.good || "", i.calc || "", i.group].join(" ").toLowerCase().includes(q);
+  let html = "";
+  for (const g of groups) {
+    if (guideGroup !== "All" && g !== guideGroup) continue;
+    const list = items.filter(i => i.group === g && match(i));
+    if (!list.length) continue;
+    html += `<div class="gsection">${esc(g)}</div><div class="ggrid">` + list.map(i => {
+      const canUse = varNames().includes(i.key);
+      const code = i.custom ? "★ " + i.key : label(i.key);
+      return `<div class="panel gcard${i.custom ? " custom" : ""}">
+        <div class="gtitle"><span class="gcode">${esc(code)}</span><span class="gname">${esc(i.name)}</span></div>
+        <p>${esc(i.what)}</p>
+        ${i.good ? `<p><span class="gk">What's a good number?</span>${esc(i.good)}</p>` : ""}
+        ${i.calc ? `<p><span class="gk">${i.custom ? "Your formula" : "How it's worked out"}</span><span class="gcalc">${esc(i.calc)}</span></p>` : ""}
+        ${canUse ? `<div class="gvar">Name to use in formulas: <code>${esc(i.key)}</code></div>` : ""}
+        <div class="actions">
+          <button class="btn sm primary" data-gsort="${esc(i.key)}">See the leaders</button>
+          ${canUse ? `<button class="btn sm" data-guse="${esc(i.key)}">Use in a formula</button>` : ""}
+        </div></div>`;
+    }).join("") + "</div>";
+  }
+  $("guideBody").innerHTML = html || `<div class="panel pad dim" style="margin-top:14px">No stat matches that search. Try a simpler word, like "shooting" or "assist".</div>`;
+}
+
+function showLeadersBy(key) {
+  hidden.delete(key); store("hidden", [...hidden]);
+  sortKey = key; sortDir = ["POS"].includes(key) ? "asc" : "desc";
+  buildColumnsMenu(); setView("leaders"); renderTable();
+}
+
+/* ---------- Stat Creator view ---------- */
+function renderChips() {
+  $("statChips").innerHTML =
+    [...statCols, ...(infoCols.includes("AGE") ? ["AGE"] : [])].map(c => `<button class="chipbtn" data-ins="${esc(c)}" title="${esc(longLabel(c))}">${esc(c)}</button>`).join("") +
+    formulas.filter(f => !f.error).map(f => `<button class="chipbtn mine" data-ins="${esc(f.name)}" title="Your stat">★ ${esc(f.name)}</button>`).join("");
+  $("fnChips").innerHTML = FUNCTIONS.map(([n, ex]) => `<button class="chipbtn" data-fn="${esc(ex)}" title="${esc(ex)}">${esc(n)}()</button>`).join("");
+  $("templates").innerHTML = TEMPLATES.filter(t => canRun(t.expr)).map((t, i) =>
+    `<button class="tpl" data-tpl="${i}"><b>${esc(t.name)}</b>${esc(t.note)}<span>${esc(t.expr)}</span></button>`).join("");
+}
+
+function canRun(expr) {
+  try {
+    const node = math.parse(expr);
+    const needed = new Set();
+    node.traverse(n => { if (n.isSymbolNode && typeof math[n.name] === "undefined") needed.add(n.name); });
+    const have = new Set(varNames());
+    return [...needed].every(x => have.has(x));
+  } catch (e) { return false; }
+}
+
+function insertAtCursor(text) {
+  const el = $("cExpr");
+  const s = el.selectionStart ?? el.value.length, e = el.selectionEnd ?? el.value.length;
+  el.value = el.value.slice(0, s) + text + el.value.slice(e);
+  const pos = s + text.length;
+  el.focus(); el.setSelectionRange(pos, pos);
+  updatePreview();
+}
+
+function insertFunction(example) {
+  // put the cursor inside the parentheses
+  const el = $("cExpr");
+  const name = example.slice(0, example.indexOf("("));
+  const s = el.selectionStart ?? el.value.length, e = el.selectionEnd ?? el.value.length;
+  const selected = el.value.slice(s, e);
+  const text = name + "(" + selected + ")";
+  el.value = el.value.slice(0, s) + text + el.value.slice(e);
+  const pos = s + name.length + 1 + selected.length;
+  el.focus(); el.setSelectionRange(selected ? pos + 1 : pos, selected ? pos + 1 : pos);
+  updatePreview();
+}
+
+function setMsg(text, kind) { const m = $("cMsg"); m.textContent = text || ""; m.className = "msg" + (kind ? " " + kind : ""); }
+
+function updatePreview() {
+  const expr = $("cExpr").value.trim();
+  const body = $("previewBody");
+  if (!expr) { body.className = "dim"; body.textContent = "Type a formula to see who leads."; setMsg(""); return; }
+  let code;
+  try { code = compileFormula(expr); } catch (e) { body.className = "dim"; body.textContent = "…"; setMsg("Formula problem: " + e.message, "err"); return; }
+  const names = namesFor(editingName);
+  const pool = players.filter(p => (p.MIN || 0) >= 15 && (p.GP || 0) >= 1);
+  const scored = [];
+  let anyError = null;
+  for (const p of pool) {
+    const scope = {};
+    for (const n of names) if (typeof p[n] === "number") scope[n] = p[n];
+    let v;
+    try { v = code.evaluate(scope); } catch (e) { anyError = anyError || e.message; continue; }
+    if (typeof v === "boolean") v = v ? 1 : 0;
+    if (typeof v === "number" && isFinite(v)) scored.push({ p, v });
+  }
+  if (!scored.length) {
+    body.className = "dim"; body.textContent = "No results yet.";
+    setMsg(anyError ? "Formula problem: " + anyError : "That formula doesn't produce numbers for any player.", "err");
+    return;
+  }
+  setMsg("");
+  scored.sort((a, b) => previewDir === "desc" ? b.v - a.v : a.v - b.v);
+  const f = v => { const a = Math.abs(v); return (Math.round(v * 100) / 100).toLocaleString(undefined, { maximumFractionDigits: a >= 100 ? 1 : 2 }); };
+  body.className = "";
+  body.innerHTML = scored.slice(0, 10).map((s, i) =>
+    `<div class="prow"><span class="lrank">${i + 1}</span><span class="lplayer">${esc(s.p.PLAYER)}<small>${esc(s.p.TEAM)}</small></span><span class="lval">${f(s.v)}</span></div>`).join("");
+}
+
+function saveFormula() {
+  const name = $("cName").value.trim();
+  const expr = $("cExpr").value.trim();
+  const nameErr = validateName(name, editingName);
+  if (nameErr) return setMsg(nameErr, "err");
+  if (!expr) return setMsg("Type a formula first.", "err");
+  try {
+    const node = math.parse(expr);
+    const have = new Set(namesFor(editingName).filter(n => n !== name));
+    const unknown = [];
+    node.traverse(n => { if (n.isSymbolNode && typeof math[n.name] === "undefined" && !have.has(n.name) && !unknown.includes(n.name)) unknown.push(n.name); });
+    if (unknown.length) return setMsg(`I don't know "${unknown.join(", ")}". Click a stat name above to insert it.`, "err");
+    math.compile(expr);
+  } catch (e) { return setMsg("Formula problem: " + e.message, "err"); }
+
+  if (editingName) {
+    const i = formulas.findIndex(f => f.name === editingName);
+    if (i >= 0) formulas[i] = { name, expr };
+    if (sortKey === editingName) sortKey = name;
+    if (hidden.has(editingName)) { hidden.delete(editingName); }
+  } else {
+    formulas.push({ name, expr });
+  }
+  store("formulas", formulas.map(f => ({ name: f.name, expr: f.expr })));
+  hidden.delete(name); store("hidden", [...hidden]);
+  const wasEditing = !!editingName;
+  clearBuilder();
+  refreshAll();
+  setMsg(wasEditing ? `Updated "${name}".` : `Saved "${name}". It's now a column on the Leaders page.`, "ok");
+}
+
+function clearBuilder() {
+  editingName = null;
+  $("cName").value = ""; $("cExpr").value = "";
+  $("builderTitle").textContent = "New stat";
+  $("cSave").textContent = "Save stat";
+  setMsg("");
+  updatePreview();
+}
+
+function renderMyStats() {
+  if (!formulas.length) {
+    $("myStats").innerHTML = `<p class="dim" style="margin:0">Nothing here yet. Pick an example or write a formula and hit Save.</p>`;
+    return;
+  }
+  $("myStats").innerHTML = formulas.map(f => `
+    <div class="mystat"><b>★ ${esc(f.name)}</b>
+      <code>${esc(f.expr)}</code>
+      ${f.error ? `<div class="bad">Problem with this formula: ${esc(f.error)}</div>` : ""}
+      <div class="actions" style="margin-top:0">
+        <button class="btn sm primary" data-act="show" data-name="${esc(f.name)}">View leaders</button>
+        <button class="btn sm" data-act="edit" data-name="${esc(f.name)}">Edit</button>
+        <button class="btn sm ghost" data-act="del" data-name="${esc(f.name)}">Delete</button>
+      </div></div>`).join("");
+}
+
+/* ---------- wiring ---------- */
+function refreshAll() {
+  recompute();
+  buildColumnsMenu();
+  renderChips();
+  renderMyStats();
+  renderTable();
+  renderGuide();
+  updatePreview();
+}
+
+function setView(v) {
+  view = ["creator", "guide"].includes(v) ? v : "leaders";
+  document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + view));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === view));
+  if (location.hash !== "#" + view) history.replaceState(null, "", "#" + view);
+  window.scrollTo(0, 0);
+}
+
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => setView(t.dataset.view)));
+window.addEventListener("hashchange", () => setView(location.hash.replace("#", "")));
+
+$("themeBtn").onclick = () => {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("theme", next); } catch (e) {}
+};
+
+["fSearch","fGP","fMPG"].forEach(id => $(id).addEventListener("input", renderTable));
+$("fReset").onclick = () => {
+  $("fSearch").value = ""; $("fGP").value = 1; $("fMPG").value = 0;
+  Object.keys(multi).forEach(id => { multi[id].selected = new Set(multi[id].options.map(o => o.value)); syncMulti(id); });
+  renderTable();
+};
+
+$("tbl").addEventListener("click", e => {
+  const th = e.target.closest("th[data-key]");
+  if (!th) return;
+  const k = th.dataset.key;
+  if (sortKey === k) sortDir = sortDir === "desc" ? "asc" : "desc";
+  else { sortKey = k; sortDir = ["PLAYER","TEAM","POS"].includes(k) ? "asc" : "desc"; }
+  renderTable();
+});
+$("cards").addEventListener("click", e => {
+  const b = e.target.closest("[data-sort]");
+  if (!b) return;
+  sortKey = b.dataset.sort; sortDir = "desc"; renderTable();
+  $("tbl").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+$("colsBtn").onclick = e => {
+  e.stopPropagation();
+  document.querySelectorAll(".msel.open").forEach(x => x.classList.remove("open"));
+  $("colsMenu").classList.toggle("open");
+};
+document.addEventListener("click", e => {
+  if (!e.target.closest(".menuwrap")) $("colsMenu").classList.remove("open");
+  document.querySelectorAll(".msel.open").forEach(x => { if (!x.contains(e.target)) x.classList.remove("open"); });
+});
+$("colsMenu").addEventListener("change", e => {
+  const t = e.target;
+  const flip = cols => {
+    const allShown = cols.every(c => !hidden.has(c));
+    cols.forEach(c => { if (allShown) hidden.add(c); else hidden.delete(c); });
+  };
+  if (t.id === "colsAll") flip(menuGroups.flat());
+  else if (t.dataset.group !== undefined) flip(menuGroups[Number(t.dataset.group)] || []);
+  else if (t.dataset.col !== undefined) { if (t.checked) hidden.delete(t.dataset.col); else hidden.add(t.dataset.col); }
+  else return;
+  store("hidden", [...hidden]); syncColsMenu(); renderTable();
+});
+$("colsMenu").addEventListener("click", e => {
+  if (e.target.id === "colsReset") { hidden = new Set(DEFAULT_HIDDEN); store("hidden", [...hidden]); buildColumnsMenu(); renderTable(); }
+});
+$("csvBtn").onclick = csvExport;
+
+$("gSearch").addEventListener("input", renderGuide);
+$("gChips").addEventListener("click", e => { const b = e.target.closest("[data-g]"); if (b) { guideGroup = b.dataset.g; renderGuide(); } });
+$("guideBody").addEventListener("click", e => {
+  const s = e.target.closest("[data-gsort]"), u = e.target.closest("[data-guse]");
+  if (s) showLeadersBy(s.dataset.gsort);
+  else if (u) { setView("creator"); insertAtCursor(u.dataset.guse); }
+});
+
+$("statChips").addEventListener("click", e => { const b = e.target.closest("[data-ins]"); if (b) insertAtCursor(b.dataset.ins); });
+$("fnChips").addEventListener("click", e => { const b = e.target.closest("[data-fn]"); if (b) insertFunction(b.dataset.fn); });
+$("templates").addEventListener("click", e => {
+  const b = e.target.closest("[data-tpl]");
+  if (!b) return;
+  const avail = TEMPLATES.filter(t => canRun(t.expr));
+  const t = avail[Number(b.dataset.tpl)];
+  if (!t) return;
+  editingName = null; $("builderTitle").textContent = "New stat"; $("cSave").textContent = "Save stat";
+  $("cName").value = varNames().includes(t.name) ? t.name + "_2" : t.name;
+  $("cExpr").value = t.expr;
+  updatePreview();
+  $("cExpr").focus();
+});
+$("cExpr").addEventListener("input", updatePreview);
+$("cExpr").addEventListener("keydown", e => { if (e.key === "Enter") saveFormula(); });
+$("cName").addEventListener("keydown", e => { if (e.key === "Enter") $("cExpr").focus(); });
+$("cSave").onclick = saveFormula;
+$("cClear").onclick = clearBuilder;
+$("dirSeg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  previewDir = b.dataset.dir;
+  $("dirSeg").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  updatePreview();
+});
+
+$("myStats").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  const name = b.dataset.name, f = formulas.find(x => x.name === name);
+  if (!f) return;
+  if (b.dataset.act === "del") {
+    if (!confirm(`Delete "${name}"?`)) return;
+    formulas = formulas.filter(x => x.name !== name);
+    store("formulas", formulas.map(x => ({ name: x.name, expr: x.expr })));
+    for (const p of players) delete p[name];
+    if (sortKey === name) { sortKey = "PTS"; sortDir = "desc"; }
+    refreshAll();
+  } else if (b.dataset.act === "edit") {
+    editingName = name;
+    $("cName").value = f.name; $("cExpr").value = f.expr;
+    $("builderTitle").textContent = `Editing "${name}"`;
+    $("cSave").textContent = "Update stat";
+    updatePreview(); $("cExpr").focus();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } else if (b.dataset.act === "show") {
+    sortKey = name; sortDir = "desc"; hidden.delete(name);
+    setView("leaders"); renderTable();
+  }
+});
+
+/* ---------- load data ---------- */
+function showLoadError() {
+  $("status").innerHTML = "<i style='background:var(--bad)'></i>No data";
+  const msg = `<div class="empty">Couldn't load <code>stats.json</code>. If you just set this up, run the "Update NBA stats" workflow once on GitHub.</div>`;
+  $("cards").innerHTML = ""; $("tbl").innerHTML = `<tbody><tr><td>${msg}</td></tr></tbody>`;
+}
+
+fetch("stats.json?_=" + Date.now())
+  .then(r => { if (!r.ok) throw new Error("missing"); return r.json(); })
+  .then(d => {
+    data = d;
+    players = Array.isArray(d.players) ? d.players : [];
+    statCols = (d.columns && d.columns.length ? d.columns : Object.keys(LABELS).filter(k => players[0] && k in players[0] && !["POS","DRAFT","AGE"].includes(k)));
+    infoCols = ["POS","AGE","DRAFT"].filter(c => players.some(p => p[c] !== null && p[c] !== undefined));
+
+    const m = /(\d{4})/.exec(d.season || "");
+    draftSeasonYear = m ? Number(m[1]) : null;
+
+    formulas = load("formulas", []).filter(f => f && f.name && f.expr).map(f => ({ name: String(f.name), expr: String(f.expr) }));
+    let renamed = false;
+    formulas.forEach(f => { if (statCols.includes(f.name) || ["POS","AGE","DRAFT"].includes(f.name)) { f.name += "_mine"; renamed = true; } });
+    if (renamed) store("formulas", formulas);
+    const savedHidden = load("hidden", null);
+    if (Array.isArray(savedHidden)) hidden = new Set(savedHidden);
+    if (!statCols.includes(sortKey)) sortKey = statCols[0];
+
+    const when = new Date(d.updated);
+    const stamp = isNaN(when) ? "" : when.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    $("status").innerHTML = `<i></i>${esc(d.season || "")} · updated ${esc(stamp)}`;
+
+    buildFilters();
+    refreshAll();
+    setView(location.hash.replace("#", ""));
+  })
+  .catch(showLoadError);
+</script>
+</body>
+</html>
