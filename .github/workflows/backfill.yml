@@ -23,3 +23,6 @@ jobs:
 
       - name: Download past seasons and build career averages
         run: python backfill.py
+
+      - name: Download game logs
+        run: python fetch_games.py
