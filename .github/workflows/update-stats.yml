@@ -31,6 +31,10 @@ jobs:
         run: python build_career.py
         continue-on-error: true
 
+      - name: Update game logs
+        run: python fetch_games.py current
+        continue-on-error: true
+
       - name: Save the new stats file
         run: |
           git config user.name "stats-bot"
