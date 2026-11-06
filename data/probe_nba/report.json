@@ -1,0 +1,17 @@
+{
+ "defense_overall": {
+  "ok": false,
+  "seconds": 93.4,
+  "error": "ReadTimeout: HTTPSConnectionPool(host='stats.nba.com', port=443): Read timed out. (read timeout=45)"
+ },
+ "hustle_player": {
+  "ok": false,
+  "seconds": 93.2,
+  "error": "ReadTimeout: HTTPSConnectionPool(host='stats.nba.com', port=443): Read timed out. (read timeout=45)"
+ },
+ "advanced_player": {
+  "ok": false,
+  "seconds": 93.2,
+  "error": "ReadTimeout: HTTPSConnectionPool(host='stats.nba.com', port=443): Read timed out. (read timeout=45)"
+ }
+}
